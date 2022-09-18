@@ -20,14 +20,23 @@ module.exports = {
       chainId: 31337,
       blockConfirmations: 1,
     },
-    rinkeby: {
-      chainId: 4,
-      blockConfirmations:6,
-      // url:RINKEBY_RPC_URL,
-      // accounts: [PRIVATE_KEY]
-    }
+    // rinkeby: {
+    //   chainId: 4,
+    //   blockConfirmations:6,
+    //   url:RINKEBY_RPC_URL,
+    //   accounts: [PRIVATE_KEY]
+    // }
   },
-  solidity: "0.8.9",
+  solidity: {
+    compilers: [
+        {
+            version: "0.8.7",
+        },
+        {
+            version: "0.4.24",
+        },
+    ],
+},
   namedAccounts: {
     deployer:{
       default: 0,
