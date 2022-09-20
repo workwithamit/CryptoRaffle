@@ -136,4 +136,35 @@ const{developmentChains, networkConfig} = require("../../helper-hardhat-config")
         })
     })
 
+    describe("fulfillRandomWords", function(){
+        //we want someone have entered the raffle before running fullfillRandomWords
+        beforeEach(async function(){
+            //someone entered in the raffle
+            await raffle.enterRaffle({value:raffleEntranceFee});
+            //increasing block time
+            await network.provider.send("evm_increaseTime",[interval.toNumber() + 1]);
+            //mining one block
+            await network.provider.send("evm_mine",[]);
+        })
+        it("can only be called after performUpkeep", async function(){
+            //fullfillRandomWords(request_id, sender.address) --> in vrfcoordinatorv2mock.sol
+            await expect(vrfCoordinatorV2Mock.fulfillRandomWords(0,raffle.address)).to.be.revertedWith("nonexistent_request");
+            await expect(vrfCoordinatorV2Mock.fulfillRandomWords(1,raffle.address)).to.be.revertedWith("nonexistent_request");
+            
+        })
+        //success
+        // it("success", async function(){
+
+        // })
+        //if not success
+        it("reverts when success is false", async function(){
+            await expect(raffle.fulfillRandomWords()).to.be.revertedWith("Raffle__TransferFailed()");
+        })
+        //for event
+        it("emits event after winnerPicked", async function(){
+            await expect(raffle.fulfillRandomWords()).to.emit(raffle,"WinnerPicked");
+        })
+
+    })
+
 })
