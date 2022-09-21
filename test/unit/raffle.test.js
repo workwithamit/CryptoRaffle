@@ -165,6 +165,12 @@ const{developmentChains, networkConfig} = require("../../helper-hardhat-config")
             await expect(raffle.fulfillRandomWords()).to.emit(raffle,"WinnerPicked");
         })
 
+        //wayyyyyy to big
+        it("picks a winner, rests the lottery and sends money", async function(){
+            const additionalEntrants = 3;
+        })
+
+
     })
 
 })
