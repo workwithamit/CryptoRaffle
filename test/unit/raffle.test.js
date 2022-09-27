@@ -4,13 +4,17 @@ const { getNamedAccounts, deployments, ethers, network } = require("hardhat");
 const{developmentChains, networkConfig} = require("../../helper-hardhat-config");
 
 !developmentChains.includes(network.name)?describe.skip:describe("Raffle Unit tests", function(){
-    let raffle, vrfCoordinatorV2Mock , deployer, raffleEntranceFee, interval;
+    let raffle, raffleContract,vrfCoordinatorV2Mock ,  raffleEntranceFee, interval,player //,deployer;
     const chainId = network.config.chainId;
     beforeEach(async()=>{
-        deployer = (await getNamedAccounts()).deployer;
+        accounts = await ethers.getSigners(); 
+        //could also done with the getNamedAccounts
+        player = accounts[1];
+        // deployer = (await getNamedAccounts()).deployer;
         await deployments.fixture(["all"]);
-        raffle = await ethers.getContract("Raffle",deployer);
-        vrfCoordinatorV2Mock = await ethers.getContract("VRFCoordinatorV2Mock", deployer);
+        raffleContract = await ethers.getContract("Raffle");
+        vrfCoordinatorV2Mock = await ethers.getContract("VRFCoordinatorV2Mock");
+        raffle = raffleContract.connect(player)
     })
 
     describe("constructor",  function(){
@@ -34,7 +38,7 @@ const{developmentChains, networkConfig} = require("../../helper-hardhat-config")
             await raffle.enterRaffle({value: raffleEntranceFee});
             const playerFromContract = await raffle.getPlayer(0);
             
-            assert.equal(playerFromContract,deployer);
+            assert.equal(player.address,playerFromContract);
         })
         it("emits event on enter", async function(){
             await expect(raffle.enterRaffle({value: raffleEntranceFee})).to.emit(raffle,"RaffleEnter")
@@ -144,7 +148,8 @@ const{developmentChains, networkConfig} = require("../../helper-hardhat-config")
             //increasing block time
             await network.provider.send("evm_increaseTime",[interval.toNumber() + 1]);
             //mining one block
-            await network.provider.send("evm_mine",[]);
+            await network.provider.send("evm_mine",[]); // method: "evm_mine", params: [] 
+
         })
         it("can only be called after performUpkeep", async function(){
             //fullfillRandomWords(request_id, sender.address) --> in vrfcoordinatorv2mock.sol
@@ -167,7 +172,49 @@ const{developmentChains, networkConfig} = require("../../helper-hardhat-config")
 
         //wayyyyyy to big
         it("picks a winner, rests the lottery and sends money", async function(){
+            //we are adding additional player other than owner
             const additionalEntrants = 3;
+            const startingIndex = 2;
+            for(let i=startingIndex; i< startingIndex+additionalEntrants; i++){
+                raffle = raffleContract.connect(accounts[i]); //Returns a new instance of the Raffle Contract connected to player
+                await raffle.enterRaffle({value: raffleEntranceFee});
+            }
+            const startingTimeStamp = await raffle.getLastTimeStamp() // storesn starting timestamp(before we fire this event)
+
+            //This will be more imp for our staging test
+            await new Promise(async (resolve, reject)=>{
+                raffle.once("winnerPicked", async()=> {
+                    //event listener for winnerPicked
+                    console.log("winnerPicked event fired!");
+                    //assert throws an error if it fails, so we need to wrap
+                    //it in a try/catch so that the promise returns event
+                    //if it fails.
+
+                    try{
+                        //Now lets get the ending values...
+                        const recentWinner = await raffle.getRecentWinner();
+                        const raffleState = await raffle.getRaffleState();
+                        const winnerBalance = await accounts[2].getBalance();
+                        const endingTimeStamp = await raffle.getLastTimeStamp();
+                        await expect (raffle.getPlayer(0)).to.be.reverted;
+                        assert.equal(recentWinner.toString(), accounts[2].address);
+                        assert.equal(raffleState,0);
+                        assert.equal(winnerBalance.toString(),startingBalance.add(raffleEntranceFee.mul(additionalEntrants).add(raffleEntranceFee)).toString());
+                        assert(endingTimeStamp>startingTimeStamp);
+                        resolve(); // if try passes, resolves the promise
+
+                    }
+                    catch(e){
+                        reject(e);
+                    }
+                })
+                //kicking off the event by mocking the chainlink keepers and vrf coordinator
+                const tx = await raffle.performUpkeep("0x");
+                
+                const txReceipt = await tx.wait(1);
+                const startingBalance = await accounts[2].getBalance();
+                await vrfCoordinatorV2Mock.fulfillRandomWords(txReceipt.events[1].args.requestId, raffle.address);
+            })
         })
 
 
