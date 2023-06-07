@@ -5,8 +5,8 @@
 ## QuickStart
 
 ```
-git clone https://github.com/workwithamit/hardhat-smart-contract-lottery
-cd hardhat-smart-contract-lottery
+git clone https://github.com/workwithamit/Tamper-proof-lottery-system
+cd Tamper-proof-lottery-system
 yarn
 ```
 
