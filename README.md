@@ -5,8 +5,8 @@
 ## QuickStart
 
 ```
-git clone https://github.com/workwithamit/Tamper-proof-lottery-system
-cd Tamper-proof-lottery-system
+git clone https://github.com/workwithamit/CryptoRaffle
+cd CryptoRaffle
 yarn
 ```
 
